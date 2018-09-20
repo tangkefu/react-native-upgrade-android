@@ -3,6 +3,9 @@ package com.lenny.modules.upgrade;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.Manifest;
+import android.app.Activity;
+
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
@@ -15,6 +18,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.widget.Toast;
+import  android.support.v4.content.FileProvider;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -32,6 +36,10 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 
 /**
  * Created by lenny on 2017/1/1.
@@ -84,6 +92,8 @@ public class UpgradeModule extends ReactContextBaseJavaModule {
         mIntentFilter.setPriority(500);
         progressReceiver = new ProgressDataReceiver();
         getReactApplicationContext().registerReceiver(progressReceiver, mIntentFilter);
+
+        // requestAllPower();
     }
     @ReactMethod
     public void cancelDownLoad() {
@@ -97,8 +107,10 @@ public class UpgradeModule extends ReactContextBaseJavaModule {
             showToast("SD卡不存在，下载失败");
             return;
         }
+        
+
 //        final String downloadUrl = "http://www.online-cmcc.com/gfms/app/apk/4GTraffic2MM.apk";
-        final String filePath = getDownloadPath() + File.separator +fileName+".apk";
+        final String filePath = getDownloadPath() + File.separator + fileName+".apk";
         if (fileIsExists(filePath) && isLastVersion(filePath, version)) {
             InstallAPK(filePath);
             return;
@@ -115,8 +127,10 @@ public class UpgradeModule extends ReactContextBaseJavaModule {
                     conn.setRequestMethod("GET");
                     conn.setConnectTimeout(30000);
                     //http请求不要gzip压缩，否则获取的文件大小可以小于文件的实际大小
-                    conn .setRequestProperty("Accept-Encoding", "identity");
+
+                    conn.setRequestProperty("Accept-Encoding", "identity");
                     int responseCode = conn.getResponseCode();
+                    
                     if(responseCode == 200){
                         inputStream = conn.getInputStream();
                         File file = new File(filePath);
@@ -143,7 +157,7 @@ public class UpgradeModule extends ReactContextBaseJavaModule {
                                 updateMsg.what = UPDATEDOWNLOADDIALOG;
                                 updateMsg.obj = curlength;
                                 handler.sendMessage(updateMsg);
-                                System.out.println("file.length()::" + curlength);
+                                // System.out.println("file.length()::" + curlength);
                             }
                         }
 
@@ -183,14 +197,30 @@ public class UpgradeModule extends ReactContextBaseJavaModule {
         }.start();
     }
     private void showToast(String info) {
-        Toast.makeText(getReactApplicationContext(), info, Toast.LENGTH_SHORT).show();
+        Toast.makeText(getReactApplicationContext(), info, Toast.LENGTH_LONG).show();
     }
     private String getDownloadPath(){
-        return Environment.getExternalStorageDirectory().getAbsolutePath();
+        return Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "download";
     }
 
     private boolean isSDcardExist(){
         return Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED);
+    }
+
+    public void requestAllPower() {
+        Activity current = getCurrentActivity();
+
+        if (ContextCompat.checkSelfPermission(current,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(current,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            } else {
+                ActivityCompat.requestPermissions(current,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+            }
+        }
     }
 
     private boolean fileIsExists(String strFile) {
@@ -230,10 +260,25 @@ public class UpgradeModule extends ReactContextBaseJavaModule {
     }
 
     private void InstallAPK(String filePath){
-        Intent i = new Intent(Intent.ACTION_VIEW);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        i.setDataAndType(Uri.parse("file://" + filePath),"application/vnd.android.package-archive");
-        getReactApplicationContext().startActivity(i);
+        System.out.println("InstallAPK:" + filePath);
+
+        File file = new File(filePath);
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        // i.setDataAndType(Uri.parse("content://" + filePath),"application/vnd.android.package-archive");
+        if(Build.VERSION.SDK_INT >= 24) { //Android 7.0及以上
+            // 参数2 清单文件中provider节点里面的authorities ; 参数3  共享的文件,即apk包的file类
+            Uri apkUri = FileProvider.getUriForFile(getReactApplicationContext(), "com.lenny.modules.upgrade.fileprovider", file);
+            //对目标应用临时授权该Uri所代表的文件
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        }else{
+            intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
+        }
+
+        getReactApplicationContext().startActivity(intent);
         cancelDownLoad();
         System.exit(0);
     }
@@ -259,5 +304,5 @@ public class UpgradeModule extends ReactContextBaseJavaModule {
                         .emit("progress", params);;
             }
         }
-    }
+    }  
 }
