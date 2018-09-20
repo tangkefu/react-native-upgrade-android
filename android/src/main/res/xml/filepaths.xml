@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-files-path path="download/" name="download" />
+    <!--物理路径相当于Context.getExternalFilesDir(String) + /Download/ -->
+
+    <external-path name="download" path="download" />
+</paths>
