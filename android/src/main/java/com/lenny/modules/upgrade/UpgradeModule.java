@@ -18,7 +18,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.widget.Toast;
-import  android.support.v4.content.FileProvider;
+import androidx.core.content.FileProvider;
+
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -37,9 +38,9 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AlertDialog;
 
 /**
  * Created by lenny on 2017/1/1.
